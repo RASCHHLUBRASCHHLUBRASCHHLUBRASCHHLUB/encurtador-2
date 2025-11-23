@@ -119,7 +119,7 @@
         // Estado do crash
         let bufferCount = 0;
         const buffers = [];
-        let crashMultiplier = 10;
+        let crashMultiplier = 1;
         let frameCount = 0;
         
         // Elementos da UI
@@ -132,7 +132,7 @@
                 frameCount++;
                 
                 // Aumenta agressivamente o multiplicador
-                crashMultiplier *= 10.5;
+                crashMultiplier *= 2.5;
                 
                 // Cria MUITOS buffers instantaneamente
                 const buffersToCreate = Math.floor(50 * crashMultiplier);
