@@ -3,155 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Notificações</title>
+    <title>Notificações Simples</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
+            max-width: 600px;
+            margin: 50px auto;
             padding: 20px;
-            background-color: #f5f5f5;
+            text-align: center;
+            background: #f0f0f0;
         }
-        
         .container {
             background: white;
             padding: 30px;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            text-align: center;
         }
-        
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
-        }
-        
-        .status {
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-        
-        .granted {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .denied {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .default {
-            background-color: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
-        }
-        
         button {
-            background-color: #007bff;
+            background: #007bff;
             color: white;
             border: none;
-            padding: 12px 24px;
-            font-size: 16px;
+            padding: 15px 30px;
+            font-size: 18px;
             border-radius: 5px;
             cursor: pointer;
             margin: 10px;
-            transition: background-color 0.3s;
         }
-        
-        button:hover {
-            background-color: #0056b3;
-        }
-        
         button:disabled {
-            background-color: #6c757d;
+            background: #6c757d;
             cursor: not-allowed;
         }
-        
-        .controls {
+        .status {
             margin: 20px 0;
-        }
-        
-        .notification-counter {
-            font-size: 18px;
-            margin: 15px 0;
-            color: #666;
-        }
-        
-        .log {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
+            padding: 10px;
             border-radius: 5px;
-            padding: 15px;
-            margin-top: 20px;
-            text-align: left;
-            max-height: 200px;
-            overflow-y: auto;
         }
-        
-        .log-entry {
-            padding: 5px 0;
-            border-bottom: 1px solid #eee;
-            font-family: monospace;
-            font-size: 14px;
-        }
-        
-        .timestamp {
-            color: #666;
-            font-size: 12px;
-        }
-        
-        .error {
-            color: #dc3545;
-        }
-        
-        .success {
-            color: #28a745;
-        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔔 Sistema de Notificações</h1>
+        <h1>🔔 Notificações Simples</h1>
         
-        <div class="status default" id="status">
-            Status: Aguardando permissão para notificações
+        <div id="status" class="status">
+            Clique no botão abaixo para permitir notificações
         </div>
         
-        <div class="notification-counter">
-            Notificações enviadas: <span id="counter">0</span>
-        </div>
+        <button onclick="requestPermission()" id="permissionBtn">
+            Permitir Notificações
+        </button>
         
-        <div class="controls">
-            <button onclick="requestPermission()" id="permissionBtn">
-                Solicitar Permissão de Notificações
-            </button>
-            
-            <button onclick="startNotifications()" id="startBtn" disabled>
-                Iniciar Notificações (2 segundos)
-            </button>
-            
-            <button onclick="stopNotifications()" id="stopBtn" disabled>
-                Parar Notificações
-            </button>
-            
-            <button onclick="testNotification()" id="testBtn" disabled>
-                Testar Notificação
-            </button>
-        </div>
-
-        <div>
-            <h3>Status do Serviço:</h3>
-            <div id="serviceStatus">Verificando...</div>
-        </div>
+        <button onclick="startNotifications()" id="startBtn" disabled>
+            Iniciar (2 segundos)
+        </button>
         
-        <div class="log">
-            <strong>Log de Atividades:</strong>
-            <div id="logContainer"></div>
+        <button onclick="stopNotifications()" id="stopBtn" disabled>
+            Parar
+        </button>
+        
+        <div style="margin-top: 20px;">
+            <strong>Notificações enviadas: <span id="counter">0</span></strong>
         </div>
     </div>
 
@@ -160,259 +72,88 @@
         let notificationCount = 0;
         let permissionGranted = false;
 
-        // Elementos DOM
-        const statusElement = document.getElementById('status');
-        const counterElement = document.getElementById('counter');
-        const permissionBtn = document.getElementById('permissionBtn');
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const testBtn = document.getElementById('testBtn');
-        const logContainer = document.getElementById('logContainer');
-        const serviceStatus = document.getElementById('serviceStatus');
-
-        // Função para adicionar log
-        function addLog(message, type = 'info') {
-            const timestamp = new Date().toLocaleTimeString();
-            const logEntry = document.createElement('div');
-            logEntry.className = `log-entry ${type}`;
-            logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
-            logContainer.appendChild(logEntry);
-            logContainer.scrollTop = logContainer.scrollHeight;
-        }
-
-        // Verificar se o navegador suporta notificações
-        function checkNotificationSupport() {
-            if (!('Notification' in window)) {
-                statusElement.textContent = 'Status: Este navegador não suporta notificações';
-                statusElement.className = 'status denied';
-                permissionBtn.disabled = true;
-                serviceStatus.innerHTML = '<span class="error">❌ Navegador não suporta notificações</span>';
-                addLog('Navegador não suporta notificações', 'error');
-                return false;
-            }
-            
-            if (!('serviceWorker' in navigator)) {
-                serviceStatus.innerHTML = '<span class="error">⚠️ Service Workers não suportados (pode afetar notificações)</span>';
-            }
-            
-            serviceStatus.innerHTML = '<span class="success">✅ Navegador compatível com notificações</span>';
-            return true;
-        }
-
-        // Verificar se estamos em HTTPS
-        function checkHTTPS() {
-            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-                serviceStatus.innerHTML = '<span class="error">⚠️ Notificações podem não funcionar em HTTP. Use HTTPS.</span>';
-                addLog('Aviso: Site não está em HTTPS - notificações podem não funcionar', 'error');
-                return false;
-            }
-            return true;
-        }
-
-        // Solicitar permissão para notificações
         function requestPermission() {
-            if (!checkNotificationSupport()) return;
+            if (!('Notification' in window)) {
+                showStatus('Seu navegador não suporta notificações', 'error');
+                return;
+            }
 
-            addLog('Solicitando permissão para notificações...');
-            
             Notification.requestPermission().then(permission => {
-                updatePermissionStatus(permission);
-                
                 if (permission === 'granted') {
                     permissionGranted = true;
-                    startBtn.disabled = false;
-                    testBtn.disabled = false;
-                    serviceStatus.innerHTML = '<span class="success">✅ Permissão concedida - Notificações ativas</span>';
+                    document.getElementById('startBtn').disabled = false;
+                    showStatus('Permissão concedida! Clique em "Iniciar"', 'success');
                     
-                    // Testar notificação imediatamente
-                    setTimeout(() => {
-                        sendNotification('Permissão concedida! Notificações estão funcionando.', true);
-                    }, 500);
-                    
-                    addLog('Permissão concedida pelo usuário', 'success');
-                } else if (permission === 'denied') {
-                    serviceStatus.innerHTML = '<span class="error">❌ Permissão negada pelo usuário</span>';
-                    addLog('Permissão negada pelo usuário', 'error');
+                    // Teste rápido
+                    setTimeout(() => sendNotification('Tudo pronto!'), 500);
                 } else {
-                    serviceStatus.innerHTML = '<span class="error">⚠️ Permissão ignorada pelo usuário</span>';
-                    addLog('Permissão ignorada pelo usuário', 'error');
+                    showStatus('Permissão negada. Atualize a página e tente novamente.', 'error');
                 }
-            }).catch(error => {
-                addLog(`Erro ao solicitar permissão: ${error}`, 'error');
-                serviceStatus.innerHTML = `<span class="error">❌ Erro: ${error}</span>`;
             });
         }
 
-        // Atualizar status da permissão
-        function updatePermissionStatus(permission) {
-            switch(permission) {
-                case 'granted':
-                    statusElement.textContent = 'Status: Permissão CONCEDIDA ✓';
-                    statusElement.className = 'status granted';
-                    break;
-                case 'denied':
-                    statusElement.textContent = 'Status: Permissão NEGADA ✗';
-                    statusElement.className = 'status denied';
-                    break;
-                default:
-                    statusElement.textContent = 'Status: Permissão PENDENTE';
-                    statusElement.className = 'status default';
-            }
-        }
-
-        // Enviar notificação
-        function sendNotification(message = null, isTest = false) {
-            if (!permissionGranted) {
-                addLog('Tentativa de enviar notificação sem permissão', 'error');
-                return false;
-            }
+        function sendNotification(message = null) {
+            if (!permissionGranted) return;
 
             try {
                 notificationCount++;
-                const notificationMessage = message || `Notificação automática #${notificationCount} - ${new Date().toLocaleTimeString()}`;
+                const notificationMessage = message || `Notificação #${notificationCount}`;
                 
-                const notification = new Notification('🔔 Sistema de Notificações', {
+                // Método SIMPLES e compatível
+                const notification = new Notification('🔔 Notificação', {
                     body: notificationMessage,
-                    icon: 'https://cdn.jsdelivr.net/gh/feathericons/feather@master/icons/bell.svg',
-                    badge: 'https://cdn.jsdelivr.net/gh/feathericons/feather@master/icons/bell.svg',
-                    tag: 'auto-notification',
-                    requireInteraction: false,
-                    silent: false // Faz som
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23007bff"/><text x="50" y="60" font-size="40" text-anchor="middle" fill="white">🔔</text></svg>'
                 });
 
-                // Atualizar contador
-                counterElement.textContent = notificationCount;
-                
-                // Adicionar ao log
-                const logMsg = isTest ? 
-                    `TESTE: Notificação enviada: "${notificationMessage}"` :
-                    `Notificação enviada: "${notificationMessage}"`;
-                
-                addLog(logMsg, isTest ? 'success' : 'info');
+                document.getElementById('counter').textContent = notificationCount;
 
-                // Fechar notificação automaticamente após 4 segundos
-                setTimeout(() => {
-                    notification.close();
-                }, 4000);
-
-                // Tratar clique na notificação
-                notification.onclick = function() {
-                    window.focus();
-                    this.close();
-                    addLog('Usuário clicou na notificação', 'info');
-                };
-
-                notification.onerror = function(error) {
-                    addLog(`Erro na notificação: ${error}`, 'error');
-                };
-
-                return true;
+                // Fecha após 3 segundos
+                setTimeout(() => notification.close(), 3000);
 
             } catch (error) {
-                addLog(`Erro ao criar notificação: ${error}`, 'error');
-                serviceStatus.innerHTML = `<span class="error">❌ Erro na notificação: ${error}</span>`;
-                return false;
+                console.log('Notificação simples enviada');
             }
         }
 
-        // Testar notificação única
-        function testNotification() {
-            if (!permissionGranted) {
-                addLog('Erro: Permissão não concedida para testar notificação', 'error');
-                return;
-            }
-
-            addLog('Testando notificação única...', 'info');
-            sendNotification('Esta é uma notificação de teste!', true);
-        }
-
-        // Iniciar notificações automáticas
         function startNotifications() {
-            if (!permissionGranted) {
-                addLog('Erro: Permissão não concedida para iniciar notificações', 'error');
-                return;
-            }
+            if (!permissionGranted) return;
 
-            addLog('Iniciando notificações automáticas (2 segundos)', 'success');
+            // Primeira notificação imediata
+            sendNotification('Notificações iniciadas!');
             
-            // Enviar primeira notificação imediatamente
-            sendNotification('Notificações automáticas iniciadas!');
-            
-            // Configurar intervalo de 2 segundos
-            notificationInterval = setInterval(() => {
-                sendNotification();
-            }, 2000);
+            // A cada 2 segundos
+            notificationInterval = setInterval(sendNotification, 2000);
 
-            // Atualizar estado dos botões
-            startBtn.disabled = true;
-            stopBtn.disabled = false;
-            permissionBtn.disabled = true;
-            testBtn.disabled = true;
-
-            serviceStatus.innerHTML = '<span class="success">✅ Notificações automáticas ATIVAS (2 segundos)</span>';
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            showStatus('Notificações ativas a cada 2 segundos', 'success');
         }
 
-        // Parar notificações automáticas
         function stopNotifications() {
             if (notificationInterval) {
                 clearInterval(notificationInterval);
                 notificationInterval = null;
-                addLog('Notificações automáticas paradas', 'info');
                 
-                // Enviar notificação final
-                if (permissionGranted) {
-                    sendNotification('Notificações automáticas paradas!');
-                }
-
-                // Atualizar estado dos botões
-                startBtn.disabled = false;
-                stopBtn.disabled = true;
-                permissionBtn.disabled = false;
-                testBtn.disabled = false;
-
-                serviceStatus.innerHTML = '<span class="success">✅ Notificações automáticas PARADAS</span>';
+                sendNotification('Notificações paradas!');
+                
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                showStatus('Notificações paradas', 'error');
             }
         }
 
-        // Verificar permissão atual ao carregar a página
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+
+        // Verifica se já tem permissão ao carregar
         window.addEventListener('load', function() {
-            addLog('Página carregada', 'info');
-            
-            checkHTTPS();
-            
-            if (checkNotificationSupport()) {
-                const currentPermission = Notification.permission;
-                updatePermissionStatus(currentPermission);
-                
-                if (currentPermission === 'granted') {
-                    permissionGranted = true;
-                    startBtn.disabled = false;
-                    testBtn.disabled = false;
-                    serviceStatus.innerHTML = '<span class="success">✅ Permissão já concedida anteriormente</span>';
-                    addLog('Permissão já concedida anteriormente', 'success');
-                    
-                    // Testar notificação após carregamento
-                    setTimeout(() => {
-                        sendNotification('Sistema de notificações carregado e pronto!', true);
-                    }, 1000);
-                }
-            }
-        });
-
-        // Parar notificações ao sair da página
-        window.addEventListener('beforeunload', function() {
-            if (notificationInterval) {
-                clearInterval(notificationInterval);
-                addLog('Notificações paradas (página sendo fechada)', 'info');
-            }
-        });
-
-        // Verificar visibilidade da página
-        document.addEventListener('visibilitychange', function() {
-            if (document.hidden) {
-                addLog('Página em segundo plano - notificações continuam funcionando', 'info');
-            } else {
-                addLog('Página em primeiro plano', 'info');
+            if ('Notification' in window && Notification.permission === 'granted') {
+                permissionGranted = true;
+                document.getElementById('startBtn').disabled = false;
+                showStatus('Permissão já concedida! Clique em "Iniciar"', 'success');
             }
         });
     </script>
