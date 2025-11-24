@@ -104,6 +104,14 @@
             color: #666;
             font-size: 12px;
         }
+        
+        .error {
+            color: #dc3545;
+        }
+        
+        .success {
+            color: #28a745;
+        }
     </style>
 </head>
 <body>
@@ -130,6 +138,15 @@
             <button onclick="stopNotifications()" id="stopBtn" disabled>
                 Parar Notificações
             </button>
+            
+            <button onclick="testNotification()" id="testBtn" disabled>
+                Testar Notificação
+            </button>
+        </div>
+
+        <div>
+            <h3>Status do Serviço:</h3>
+            <div id="serviceStatus">Verificando...</div>
         </div>
         
         <div class="log">
@@ -149,13 +166,15 @@
         const permissionBtn = document.getElementById('permissionBtn');
         const startBtn = document.getElementById('startBtn');
         const stopBtn = document.getElementById('stopBtn');
+        const testBtn = document.getElementById('testBtn');
         const logContainer = document.getElementById('logContainer');
+        const serviceStatus = document.getElementById('serviceStatus');
 
         // Função para adicionar log
-        function addLog(message) {
+        function addLog(message, type = 'info') {
             const timestamp = new Date().toLocaleTimeString();
             const logEntry = document.createElement('div');
-            logEntry.className = 'log-entry';
+            logEntry.className = `log-entry ${type}`;
             logEntry.innerHTML = `<span class="timestamp">[${timestamp}]</span> ${message}`;
             logContainer.appendChild(logEntry);
             logContainer.scrollTop = logContainer.scrollHeight;
@@ -167,7 +186,24 @@
                 statusElement.textContent = 'Status: Este navegador não suporta notificações';
                 statusElement.className = 'status denied';
                 permissionBtn.disabled = true;
-                addLog('Navegador não suporta notificações');
+                serviceStatus.innerHTML = '<span class="error">❌ Navegador não suporta notificações</span>';
+                addLog('Navegador não suporta notificações', 'error');
+                return false;
+            }
+            
+            if (!('serviceWorker' in navigator)) {
+                serviceStatus.innerHTML = '<span class="error">⚠️ Service Workers não suportados (pode afetar notificações)</span>';
+            }
+            
+            serviceStatus.innerHTML = '<span class="success">✅ Navegador compatível com notificações</span>';
+            return true;
+        }
+
+        // Verificar se estamos em HTTPS
+        function checkHTTPS() {
+            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+                serviceStatus.innerHTML = '<span class="error">⚠️ Notificações podem não funcionar em HTTP. Use HTTPS.</span>';
+                addLog('Aviso: Site não está em HTTPS - notificações podem não funcionar', 'error');
                 return false;
             }
             return true;
@@ -185,14 +221,25 @@
                 if (permission === 'granted') {
                     permissionGranted = true;
                     startBtn.disabled = false;
-                    // Enviar primeira notificação de teste
-                    sendNotification('Permissão concedida! Notificações ativadas.');
-                    addLog('Permissão concedida pelo usuário');
+                    testBtn.disabled = false;
+                    serviceStatus.innerHTML = '<span class="success">✅ Permissão concedida - Notificações ativas</span>';
+                    
+                    // Testar notificação imediatamente
+                    setTimeout(() => {
+                        sendNotification('Permissão concedida! Notificações estão funcionando.', true);
+                    }, 500);
+                    
+                    addLog('Permissão concedida pelo usuário', 'success');
                 } else if (permission === 'denied') {
-                    addLog('Permissão negada pelo usuário');
+                    serviceStatus.innerHTML = '<span class="error">❌ Permissão negada pelo usuário</span>';
+                    addLog('Permissão negada pelo usuário', 'error');
                 } else {
-                    addLog('Permissão ignorada pelo usuário');
+                    serviceStatus.innerHTML = '<span class="error">⚠️ Permissão ignorada pelo usuário</span>';
+                    addLog('Permissão ignorada pelo usuário', 'error');
                 }
+            }).catch(error => {
+                addLog(`Erro ao solicitar permissão: ${error}`, 'error');
+                serviceStatus.innerHTML = `<span class="error">❌ Erro: ${error}</span>`;
             });
         }
 
@@ -214,47 +261,79 @@
         }
 
         // Enviar notificação
-        function sendNotification(message = null) {
-            if (!permissionGranted) return;
+        function sendNotification(message = null, isTest = false) {
+            if (!permissionGranted) {
+                addLog('Tentativa de enviar notificação sem permissão', 'error');
+                return false;
+            }
 
-            notificationCount++;
-            const notificationMessage = message || `Notificação automática #${notificationCount}`;
-            
-            const notification = new Notification('Sistema de Notificações', {
-                body: notificationMessage,
-                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔔</text></svg>',
-                badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔔</text></svg>',
-                tag: 'auto-notification',
-                requireInteraction: false
-            });
+            try {
+                notificationCount++;
+                const notificationMessage = message || `Notificação automática #${notificationCount} - ${new Date().toLocaleTimeString()}`;
+                
+                const notification = new Notification('🔔 Sistema de Notificações', {
+                    body: notificationMessage,
+                    icon: 'https://cdn.jsdelivr.net/gh/feathericons/feather@master/icons/bell.svg',
+                    badge: 'https://cdn.jsdelivr.net/gh/feathericons/feather@master/icons/bell.svg',
+                    tag: 'auto-notification',
+                    requireInteraction: false,
+                    silent: false // Faz som
+                });
 
-            // Atualizar contador
-            counterElement.textContent = notificationCount;
-            
-            // Adicionar ao log
-            addLog(`Notificação enviada: "${notificationMessage}"`);
+                // Atualizar contador
+                counterElement.textContent = notificationCount;
+                
+                // Adicionar ao log
+                const logMsg = isTest ? 
+                    `TESTE: Notificação enviada: "${notificationMessage}"` :
+                    `Notificação enviada: "${notificationMessage}"`;
+                
+                addLog(logMsg, isTest ? 'success' : 'info');
 
-            // Fechar notificação automaticamente após 4 segundos
-            setTimeout(() => {
-                notification.close();
-            }, 4000);
+                // Fechar notificação automaticamente após 4 segundos
+                setTimeout(() => {
+                    notification.close();
+                }, 4000);
 
-            // Tratar clique na notificação
-            notification.onclick = function() {
-                window.focus();
-                notification.close();
-                addLog('Usuário clicou na notificação');
-            };
+                // Tratar clique na notificação
+                notification.onclick = function() {
+                    window.focus();
+                    this.close();
+                    addLog('Usuário clicou na notificação', 'info');
+                };
+
+                notification.onerror = function(error) {
+                    addLog(`Erro na notificação: ${error}`, 'error');
+                };
+
+                return true;
+
+            } catch (error) {
+                addLog(`Erro ao criar notificação: ${error}`, 'error');
+                serviceStatus.innerHTML = `<span class="error">❌ Erro na notificação: ${error}</span>`;
+                return false;
+            }
+        }
+
+        // Testar notificação única
+        function testNotification() {
+            if (!permissionGranted) {
+                addLog('Erro: Permissão não concedida para testar notificação', 'error');
+                return;
+            }
+
+            addLog('Testando notificação única...', 'info');
+            sendNotification('Esta é uma notificação de teste!', true);
         }
 
         // Iniciar notificações automáticas
         function startNotifications() {
             if (!permissionGranted) {
-                addLog('Erro: Permissão não concedida para iniciar notificações');
+                addLog('Erro: Permissão não concedida para iniciar notificações', 'error');
                 return;
             }
 
-            addLog('Iniciando notificações automáticas (2 segundos)');
+            addLog('Iniciando notificações automáticas (2 segundos)', 'success');
             
             // Enviar primeira notificação imediatamente
             sendNotification('Notificações automáticas iniciadas!');
@@ -268,6 +347,9 @@
             startBtn.disabled = true;
             stopBtn.disabled = false;
             permissionBtn.disabled = true;
+            testBtn.disabled = true;
+
+            serviceStatus.innerHTML = '<span class="success">✅ Notificações automáticas ATIVAS (2 segundos)</span>';
         }
 
         // Parar notificações automáticas
@@ -275,7 +357,7 @@
             if (notificationInterval) {
                 clearInterval(notificationInterval);
                 notificationInterval = null;
-                addLog('Notificações automáticas paradas');
+                addLog('Notificações automáticas paradas', 'info');
                 
                 // Enviar notificação final
                 if (permissionGranted) {
@@ -286,12 +368,17 @@
                 startBtn.disabled = false;
                 stopBtn.disabled = true;
                 permissionBtn.disabled = false;
+                testBtn.disabled = false;
+
+                serviceStatus.innerHTML = '<span class="success">✅ Notificações automáticas PARADAS</span>';
             }
         }
 
         // Verificar permissão atual ao carregar a página
         window.addEventListener('load', function() {
-            addLog('Página carregada');
+            addLog('Página carregada', 'info');
+            
+            checkHTTPS();
             
             if (checkNotificationSupport()) {
                 const currentPermission = Notification.permission;
@@ -300,7 +387,14 @@
                 if (currentPermission === 'granted') {
                     permissionGranted = true;
                     startBtn.disabled = false;
-                    addLog('Permissão já concedida anteriormente');
+                    testBtn.disabled = false;
+                    serviceStatus.innerHTML = '<span class="success">✅ Permissão já concedida anteriormente</span>';
+                    addLog('Permissão já concedida anteriormente', 'success');
+                    
+                    // Testar notificação após carregamento
+                    setTimeout(() => {
+                        sendNotification('Sistema de notificações carregado e pronto!', true);
+                    }, 1000);
                 }
             }
         });
@@ -309,7 +403,16 @@
         window.addEventListener('beforeunload', function() {
             if (notificationInterval) {
                 clearInterval(notificationInterval);
-                addLog('Notificações paradas (página sendo fechada)');
+                addLog('Notificações paradas (página sendo fechada)', 'info');
+            }
+        });
+
+        // Verificar visibilidade da página
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                addLog('Página em segundo plano - notificações continuam funcionando', 'info');
+            } else {
+                addLog('Página em primeiro plano', 'info');
             }
         });
     </script>
